@@ -1,0 +1,259 @@
+openapi: 3.0.0
+info:
+  version: 1.0.0
+  title: Image storage service API's
+  description: Api's which create/delete album and image.
+
+servers:
+  - url: http://localhost:9098
+
+security:
+  - BasicAuth: []
+paths:
+  /api/v1/create-album:
+    post:
+      description: Which will create an album inside image-album-db.json file.         
+      requestBody:    
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object 
+              required:
+                - albumName
+              properties:
+                title:
+                  type: string                  
+                imageType:
+                  type: string 
+                size:
+                  type: string 
+                createdOn:  
+                  type: string 
+      responses:
+        '200':
+          description: Successfully created a new album
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        '400':
+          description: Unmarshalling error occured
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'          
+
+  /api/v1/create-image:
+    post:
+      description: This api  will create an image inside image-album-db.json file.         
+      requestBody:    
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object 
+              required:
+                - albumName
+                - title
+              properties:
+                title:
+                  type: string                  
+                imageType:
+                  type: string 
+                size:
+                  type: string 
+                createdOn:  
+                  type: string 
+      responses:
+        '200':
+          description: Successfully created a new image inside album
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'          
+
+  /api/v1/delete-album:
+    delete:
+      description: This api will delete an album inside image-album-db.json file.         
+      requestBody:    
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object 
+              required:
+                - albumName
+              properties:
+                title:
+                  type: string                  
+                imageType:
+                  type: string 
+                size:
+                  type: string 
+                createdOn:  
+                  type: string 
+      responses:
+        '200':
+          description: Successfully deleted requested album
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        '451':
+          description: No such album exist.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'    
+
+  /api/v1/delete-image:
+    delete:
+      description: This api will delete an image from album inside image-album-db.json file.         
+      requestBody:    
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object 
+              required:
+                - albumName
+                - title #name of the image 
+              properties:
+                title:
+                  type: string                  
+                imageType:
+                  type: string 
+                size:
+                  type: string 
+                createdOn:  
+                  type: string 
+      responses:
+        '200':
+          description: Successfully deleted requested album
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        '451':
+          description: No such album exist.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+
+        '452':
+          description: No such image exist inside album.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response' 
+
+  /api/v1/image:
+    get:
+      description: This api will return single image from an album inside image-album-db.json file.         
+      requestBody:    
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object 
+              required:
+                - albumName
+                - title #name of the image 
+              properties:
+                title:
+                  type: string                  
+                imageType:
+                  type: string 
+                size:
+                  type: string 
+                createdOn:  
+                  type: string 
+      responses:
+        '200':
+          description: Successfully deleted requested album
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        '451':
+          description: No such album exist.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+
+        '452':
+          description: No such image exist inside album.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+
+  /api/v1/images:
+    get:
+      description: This api will return all images wtihin an album inside image-album-db.json file.         
+      requestBody:    
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object 
+              required:
+                - albumName
+                - title #name of the image 
+              properties:
+                title:
+                  type: string                  
+                imageType:
+                  type: string 
+                size:
+                  type: string 
+                createdOn:  
+                  type: string 
+      responses:
+        '200':
+          description: Successfully deleted requested album
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        '451':
+          description: No such album exist.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+
+        '452':
+          description: No such image exist inside album.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+
+components:
+  securitySchemes:
+    BasicAuth:
+      type: https
+      scheme: basic 
+
+    BearerAuth:
+      type: http
+      scheme: bearer
+
+  schemas:
+    Response:
+      type: object
+      properties:
+        ok:
+          type: bool
+        data:
+          type: object

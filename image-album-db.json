@@ -1,0 +1,31 @@
+{
+ 	"MyDairy": [
+ 		{
+ 			"title": "bharath",
+ 			"imageType": "png",
+ 			"size": "35 KB",
+ 			"createdOn": "2020-05-03 23:00:00 +0000 UTC"
+ 		},
+ 		{
+ 			"title": "raman",
+ 			"imageType": "jpeg",
+ 			"size": "70 KB",
+ 			"createdOn": "2020-05-04 11:48:00 +0000 UTC"
+ 		},
+ 		{
+ 			"title": "suguna",
+ 			"imageType": "png",
+ 			"size": "50 KB",
+ 			"createdOn": "2020-05-04 22:40:00 +0000 UTC"
+ 		}
+ 	],
+ 	"MyFamily": [
+ 		{
+ 			"title": "dad",
+ 			"imageType": "jpeg",
+ 			"size": "50 KB",
+ 			"createdOn": "2020-05-04 11:40:00 +0000 UTC"
+ 		}
+ 	],
+ 	"MyFamilys": []
+ }
