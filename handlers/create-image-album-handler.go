@@ -1,11 +1,10 @@
 package handler
 
 import (
-	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
+	"sync"
 
 	"github.com/image-store/webservice/kafka-services"
 	model "github.com/image-store/webservice/models"
@@ -17,6 +16,7 @@ var (
 	image model.Image
 	np    kafka.NewProducer
 	nc    kafka.NewConsumer
+	mutex sync.Mutex
 )
 
 // ImageAlbum ...
@@ -85,17 +85,15 @@ func (i *ImageAlbum) createAlbum(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	albumName := decodeRequest["albumName"]
-	// reading exsiting data from json file
-	file, err := ioutil.ReadFile("image-album-db.json")
-	if err != nil {
-		fmt.Println("error in reading json file", err)
-		utility.SendResponse(w, false, err)
+
+	if albumName == nil {
+		log.Println("albumName should not be empty")
+		utility.SendResponse(w, false, "albumName should not be empty:Invalid request")
 		return
 	}
 
-	data := make(map[string][]model.Image, 0)
-	if err = json.Unmarshal(file, &data); err != nil {
-		log.Println("error with unmarshalling", err)
+	data, err := utility.ToUnmarshall("image-album-db.json")
+	if err != nil {
 		utility.SendResponse(w, false, err)
 		return
 	}
@@ -110,13 +108,18 @@ func (i *ImageAlbum) createAlbum(w http.ResponseWriter, r *http.Request) {
 	jsonData := make(map[string][]model.Image, 0)
 	jsonData = data
 	jsonData[albumName.(string)] = []model.Image{}
-	fileData, err := json.MarshalIndent(jsonData, " ", "\t")
+
+	fileData, err := utility.ToMarshalIndent(data)
 	if err != nil {
-		log.Println("marshal error", err)
+		log.Println("marshal indent error", err)
 		utility.SendResponse(w, false, err)
 		return
 	}
+
+	// To avoid unsafe operations while writing to the file
+	mutex.Lock()
 	ioutil.WriteFile("image-album-db.json", fileData, 0644)
+	mutex.Unlock()
 
 	defer func() {
 		np.ProducerMessage(Producer, "created new album "+albumName.(string))
@@ -146,18 +149,24 @@ func (i *ImageAlbum) CreateImage(w http.ResponseWriter, r *http.Request) {
 	fileSize := decodeRequest["size"]
 	createdOn := decodeRequest["createdOn"]
 
-	file, _ := ioutil.ReadFile("image-album-db.json")
-	data := make(map[string][]model.Image, 0)
-	if err = json.Unmarshal(file, &data); err != nil {
-		log.Println("error with unmarshalling", err)
+	if albumName == nil || title == nil {
+		log.Println("both albumName and title should not be empty")
+		utility.SendResponse(w, false, "both albumName and title should not be empty:Invalid request")
+		return
+	}
+
+	data, err := utility.ToUnmarshall("image-album-db.json")
+	if err != nil {
 		utility.SendResponse(w, false, err)
 		return
 	}
 
-	if _, ok := data[title.(string)]; ok {
-		log.Println(title.(string) + " already exist.")
-		utility.SendResponse(w, false, title.(string)+" already exist.")
-		return
+	for _, v := range data[albumName.(string)] {
+		if v.Title == title.(string) {
+			log.Println("image name " + title.(string) + " already exist.")
+			utility.SendResponse(w, false, "image name "+title.(string)+" already exist.")
+			return
+		}
 	}
 
 	defer func() {
@@ -187,13 +196,17 @@ func (i *ImageAlbum) CreateImage(w http.ResponseWriter, r *http.Request) {
 
 	data[albumName.(string)] = images
 
-	fileData, err := json.MarshalIndent(data, " ", "\t")
+	fileData, err := utility.ToMarshalIndent(data)
 	if err != nil {
-		log.Println("marshal error", err)
+		log.Println("marshal indent error", err)
 		utility.SendResponse(w, false, err)
 		return
 	}
+
+	mutex.Lock()
 	ioutil.WriteFile("image-album-db.json", fileData, 0644)
+	mutex.Unlock()
+
 	utility.SendResponse(w, true, "created new image inside "+albumName.(string)+" with name "+title.(string))
 }
 
@@ -212,11 +225,14 @@ func (i *ImageAlbum) DeleteImageAlbum(w http.ResponseWriter, r *http.Request) {
 	}
 
 	albumName := decodeRequest["albumName"]
+	if albumName == nil {
+		log.Println("albumName should not be empty")
+		utility.SendResponse(w, false, "albumName should not be empty:Invalid request")
+		return
+	}
 
-	file, _ := ioutil.ReadFile("image-album-db.json")
-	data := make(map[string][]model.Image, 0)
-	if err = json.Unmarshal(file, &data); err != nil {
-		log.Println("error with unmarshalling", err)
+	data, err := utility.ToUnmarshall("image-album-db.json")
+	if err != nil {
 		utility.SendResponse(w, false, err)
 		return
 	}
@@ -228,13 +244,17 @@ func (i *ImageAlbum) DeleteImageAlbum(w http.ResponseWriter, r *http.Request) {
 	}
 	delete(data, albumName.(string))
 
-	fileData, err := json.MarshalIndent(data, " ", "\t")
+	fileData, err := utility.ToMarshalIndent(data)
 	if err != nil {
-		log.Println("marshal error", err)
+		log.Println("marshal indent error", err)
 		utility.SendResponse(w, false, err)
 		return
 	}
+
+	mutex.Lock()
 	ioutil.WriteFile("image-album-db.json", fileData, 0644)
+	mutex.Unlock()
+
 	defer func() {
 		np.ProducerMessage(Producer, albumName.(string)+" successfully deleted")
 	}()
@@ -261,10 +281,14 @@ func (i *ImageAlbum) DeleteImage(w http.ResponseWriter, r *http.Request) {
 	//which image to delete
 	imageTitle := decodeRequest["title"]
 
-	file, _ := ioutil.ReadFile("image-album-db.json")
-	data := make(map[string][]model.Image, 0)
-	if err = json.Unmarshal(file, &data); err != nil {
-		log.Println("error with unmarshalling", err)
+	if albumName == nil || imageTitle == nil {
+		log.Println("both albumName and imageTitle should not be empty")
+		utility.SendResponse(w, false, "both albumName and imageTitle should not be empty:Invalid request")
+		return
+	}
+
+	data, err := utility.ToUnmarshall("image-album-db.json")
+	if err != nil {
 		utility.SendResponse(w, false, err)
 		return
 	}
@@ -291,17 +315,22 @@ func (i *ImageAlbum) DeleteImage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	data[albumName.(string)] = images
-	fileData, err := json.MarshalIndent(data, " ", "\t")
+
+	fileData, err := utility.ToMarshalIndent(data)
 	if err != nil {
-		log.Println("marshal error", err)
+		log.Println("marshal indent error", err)
 		utility.SendResponse(w, false, err)
 		return
 	}
+
+	mutex.Lock()
 	ioutil.WriteFile("image-album-db.json", fileData, 0644)
+	mutex.Unlock()
+
 	defer func() {
 		np.ProducerMessage(Producer, "image "+imageTitle.(string)+" from "+albumName.(string)+" successfully deleted")
 	}()
-	utility.SendResponse(w, false, "image: "+imageTitle.(string)+" from "+albumName.(string)+" successfully deleted")
+	utility.SendResponse(w, true, "image: "+imageTitle.(string)+" from "+albumName.(string)+" successfully deleted")
 }
 
 // GetAllImages ...
@@ -314,11 +343,14 @@ func (i *ImageAlbum) GetAllImages(w http.ResponseWriter, r *http.Request) {
 	}
 
 	albumName := decodeRequest["albumName"]
+	if albumName == nil {
+		log.Println("albumName should not be empty")
+		utility.SendResponse(w, false, "albumName should not be empty:Invalid request")
+		return
+	}
 
-	file, _ := ioutil.ReadFile("image-album-db.json")
-	data := make(map[string][]model.Image, 0)
-	if err = json.Unmarshal(file, &data); err != nil {
-		log.Println("error with unmarshalling", err)
+	data, err := utility.ToUnmarshall("image-album-db.json")
+	if err != nil {
 		utility.SendResponse(w, false, err)
 		return
 	}
@@ -327,7 +359,7 @@ func (i *ImageAlbum) GetAllImages(w http.ResponseWriter, r *http.Request) {
 		images = append(images, v)
 	}
 
-	utility.SendResponse(w, false, images)
+	utility.SendResponse(w, true, images)
 }
 
 // GetImage ...
@@ -343,10 +375,8 @@ func (i *ImageAlbum) GetImage(w http.ResponseWriter, r *http.Request) {
 	// requested image
 	imageTitle := decodeRequest["title"]
 
-	file, _ := ioutil.ReadFile("image-album-db.json")
-	data := make(map[string][]model.Image, 0)
-	if err = json.Unmarshal(file, &data); err != nil {
-		log.Println("error with unmarshalling", err)
+	data, err := utility.ToUnmarshall("image-album-db.json")
+	if err != nil {
 		utility.SendResponse(w, false, err)
 		return
 	}

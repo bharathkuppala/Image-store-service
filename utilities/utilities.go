@@ -2,6 +2,8 @@ package utility
 
 import (
 	"encoding/json"
+	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 
@@ -54,4 +56,30 @@ func CheckKeyExist(m1, m2 map[string][]model.Image, k1, k2 string) (
 	v1, ok1 = m1[k1]
 	v2, ok2 = m2[k2]
 	return
+}
+
+// ToUnmarshall ...
+func ToUnmarshall(fileName string) (map[string][]model.Image, error) {
+	file, err := ioutil.ReadFile("image-album-db.json")
+	if err != nil {
+		fmt.Println("error in reading json file", err)
+		return nil, err
+	}
+
+	data := make(map[string][]model.Image, 0)
+	if err = json.Unmarshal(file, &data); err != nil {
+		log.Println("error with unmarshalling", err)
+		return nil, err
+	}
+	return data, nil
+}
+
+// ToMarshalIndent ...
+func ToMarshalIndent(data map[string][]model.Image) ([]byte, error) {
+	fileData, err := json.MarshalIndent(data, " ", "\t")
+	if err != nil {
+		log.Println("marshal error", err)
+		return nil, err
+	}
+	return fileData, nil
 }

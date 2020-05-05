@@ -20,9 +20,6 @@ var (
 	logger *log.Logger
 )
 
-func init() {
-}
-
 func main() {
 
 	logger = log.New(os.Stdout, "", log.Lmicroseconds|log.Lshortfile)
